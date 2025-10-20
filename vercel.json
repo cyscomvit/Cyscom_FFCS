@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "env": {
+    "NEXT_PUBLIC_FIREBASE_API_KEY": "@firebase_api_key",
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "@firebase_auth_domain",
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "@firebase_project_id",
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": "@firebase_storage_bucket",
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "@firebase_messaging_sender_id",
+    "NEXT_PUBLIC_FIREBASE_APP_ID": "@firebase_app_id",
+    "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID": "@firebase_measurement_id",
+    "FIREBASE_CLIENT_EMAIL": "@firebase_client_email",
+    "FIREBASE_PRIVATE_KEY": "@firebase_private_key",
+    "FIREBASE_CLIENT_EMAIL_ALT": "@firebase_client_email_alt",
+    "FIREBASE_PRIVATE_KEY_ALT": "@firebase_private_key_alt"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ],
+  "regions": ["sin1"],
+  "functions": {
+    "pages/api/**/*.ts": {
+      "maxDuration": 30
+    },
+    "pages/api/**/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false
+}
