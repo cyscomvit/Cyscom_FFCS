@@ -7,14 +7,17 @@ interface WorkflowStepsProps {
   showLinks?: boolean;
   animate?: boolean;
   showDetails?: boolean;
+  defaultMembersLimit?: number;
 }
 
 const WorkflowSteps: React.FC<WorkflowStepsProps> = ({ 
   currentStep,
   showLinks = true,
   animate = true,
-  showDetails = false
+  showDetails = false,
+  defaultMembersLimit
 }) => {
+  const limit = defaultMembersLimit || 4
   return (
     <div className="p-4 bg-black/30 rounded-lg border border-cyscom/20">
       <h3 className="text-lg font-medium text-white mb-5">
@@ -201,7 +204,7 @@ const WorkflowSteps: React.FC<WorkflowStepsProps> = ({
                 <span className="font-medium text-cyscom">Required:</span> Join 1 project
               </div>
               <div className="text-xs text-slate-400">
-                <span className="font-medium text-cyscom">Limit:</span> Maximum 4 members per project
+                <span className="font-medium text-cyscom">Limit:</span> Maximum {limit} members per project
               </div>
               <div className="text-xs text-slate-400">
                 <span className="font-medium text-cyscom">Tip:</span> Check project descriptions carefully before joining!

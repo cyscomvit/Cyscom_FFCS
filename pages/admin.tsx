@@ -368,9 +368,10 @@ export default function Admin() {
         const projectRef = doc(db, 'projects', projectId)
         const projectSnap = await tx.get(projectRef)
         if (!projectSnap.exists()) throw new Error('Project not found')
-        const projectData = projectSnap.data() as any
-        const members = projectData.members || []
-        if (members.length >= 4) throw new Error('Project is full')
+  const projectData = projectSnap.data() as any
+  const members = projectData.members || []
+  const limit = projectData.membersLimit || 4
+  if (members.length >= limit) throw new Error('Project is full')
         if (members.includes(userId)) throw new Error('User is already a member')
 
         // Update project members
@@ -772,6 +773,17 @@ export default function Admin() {
                     className="w-full px-3 py-2 bg-black/20 text-white rounded-lg border border-slate-600 focus:border-cyscom focus:outline-none"
                   />
                 </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Members Limit</label>
+                  <input
+                    type="number"
+                    id="new-project-members-limit"
+                    defaultValue={4}
+                    min={1}
+                    className="w-32 px-3 py-2 bg-black/20 text-white rounded-lg border border-slate-600 focus:border-cyscom focus:outline-none"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Maximum number of members allowed in this project.</p>
+                </div>
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={async () => {
@@ -808,6 +820,7 @@ export default function Admin() {
                           name,
                           description: desc,
                           department: dept,
+                          membersLimit: Number((document.getElementById('new-project-members-limit') as HTMLInputElement).value) || 4,
                           members: [],
                           fileUrls: fileUrls,
                           createdAt: new Date(),
@@ -819,6 +832,7 @@ export default function Admin() {
                         ;(document.getElementById('new-project-dept') as HTMLSelectElement).value = ''
                         ;(document.getElementById('new-project-desc') as HTMLTextAreaElement).value = ''
                         ;(document.getElementById('new-project-files') as HTMLInputElement).value = ''
+                        ;(document.getElementById('new-project-members-limit') as HTMLInputElement).value = '4'
 
                         alert('Project created successfully!')
                       } catch (e) {
@@ -846,7 +860,7 @@ export default function Admin() {
                           <p className="text-slate-300 text-sm mt-1">{project.description}</p>
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
                             <span>Department: {departments.find(d => d.deptId === project.department)?.name || project.department}</span>
-                            <span>Members: {project.members.length}/4</span>
+                            <span>Members: {project.members.length}/{(project as any).membersLimit || 4}</span>
                           </div>
                         </div>
                         <div className="flex gap-2">

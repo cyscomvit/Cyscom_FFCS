@@ -22,6 +22,7 @@ export interface Project {
   name: string
   description: string
   members: string[]
+  membersLimit?: number
   department?: string
   reviewIds?: string[]
 }

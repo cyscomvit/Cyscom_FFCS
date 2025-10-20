@@ -147,6 +147,10 @@ export default function ProjectPage(){
     if(hasPendingRequest) return alert('You already have a pending request');
     if((project.members||[]).includes(userId)) return alert('You are already a member');
 
+    // enforce members limit
+    const limit = project.membersLimit || 4
+    if ((project.members || []).length >= limit) return alert('Project is full')
+
     setRequesting(true);
     try {
       const db = getDbClient();
@@ -265,7 +269,7 @@ export default function ProjectPage(){
             <div className="flex justify-between items-center">
               <p className="ascii-meta">Project Members</p>
               <div className="text-xs tracking-wide">
-                {members.length}/4 members
+                {members.length}/{project?.membersLimit || 4} members
               </div>
             </div>
 

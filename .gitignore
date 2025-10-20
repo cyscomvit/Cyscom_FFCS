@@ -22,3 +22,4 @@ next-env.d.ts
 !/public/uploads/projects/
 /public/uploads/projects/*
 !/public/uploads/projects/.gitkeep
+service-account.json

@@ -65,6 +65,7 @@ export default function Projects(){
           name: data.name,
           description: data.description,
           members: data.members || [], 
+          membersLimit: data.membersLimit || 4,
           department: data.department || null
         } as Project & any)
       })
@@ -243,7 +244,8 @@ export default function Projects(){
                         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                           {projects.map((p) => {
                             const isMember = p.members.includes(userId || '')
-                            const isFull = p.members.length >= 4
+                            const limit = (p as any).membersLimit || 4
+                            const isFull = p.members.length >= limit
                             const isPending = pendingRequests.has(p.projectId)
 
                             return (
@@ -274,7 +276,7 @@ export default function Projects(){
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                                     </svg>
-                                    {p.members.length}/4 seats filled
+                                    {p.members.length}/{limit} seats filled
                                   </span>
                                   <Link href={`/project/${p.projectId}`} className="ascii-link text-[11px] sm:text-xs">
                                     View brief
