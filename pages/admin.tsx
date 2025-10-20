@@ -15,8 +15,6 @@ export default function Admin() {
   const [departments, setDepartments] = useState<Department[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [activeTab, setActiveTab] = useState<'analytics' | 'contributions' | 'users' | 'projects' | 'join-requests'>('analytics')
-  const [viewerUrl, setViewerUrl] = useState<string | null>(null)
-  const [viewerZoom, setViewerZoom] = useState<number>(1)
   const [joinRequests, setJoinRequests] = useState<any[]>([])
 
   useEffect(() => {
@@ -567,21 +565,47 @@ export default function Admin() {
               </div>
 
               {contributions.length === 0 && <p className="text-slate-300">No contributions.</p>}
-              {contributions.map((c: Contribution) => (
+              {contributions.map((c: Contribution) => {
+                // Find user info for this contribution
+                const contributor = users.find(u => u.userId === c.userId)
+                
+                return (
                 <div key={c.contribId} className="p-3 rounded bg-black/30">
                   <div className="flex items-start gap-4">
                     <div className="flex-1">
+                      {/* Contributor Info */}
+                      {contributor && (
+                        <div className="mb-3 pb-2 border-b border-slate-600">
+                          <div className="flex items-center gap-2 mb-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-cyscom" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            <span className="text-white font-medium text-sm">{contributor.name || 'Unknown User'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span>{contributor.email}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Contribution Text */}
                       <p className="text-slate-200">{c.text}</p>
                       {c.imageUrl && (
                         <div className="mt-2">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={c.imageUrl} alt="contrib" className="max-h-48 rounded inline-block mr-2 border" />
-                          <button
-                            onClick={() => { setViewerUrl(c.imageUrl ?? null); setViewerZoom(1) }}
-                            className="px-2 py-1 bg-cyberblue-700 text-white rounded ml-2 text-sm"
+                          <a
+                            href={c.imageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-cyscom text-black rounded hover:bg-cyscom/90 transition-colors text-sm font-medium"
                           >
-                            View
-                          </button>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            <span>View Attached Link</span>
+                          </a>
                         </div>
                       )}
                     </div>
@@ -595,7 +619,8 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )
+              })}
             </div>
           </div>
         )}
@@ -911,26 +936,6 @@ export default function Admin() {
       
       {/* Include the admin tools script */}
       <script src="/js/admin-tools.js" async></script>
-      {/* Image viewer modal */}
-      {viewerUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="relative max-w-4xl w-full mx-4">
-            <div className="bg-black/90 p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-3">
-                <div className="flex gap-2">
-                  <button onClick={() => setViewerZoom((z) => Math.max(0.2, z - 0.2))} className="px-3 py-1 bg-slate-700 text-white rounded">-</button>
-                  <button onClick={() => setViewerZoom((z) => Math.min(4, z + 0.2))} className="px-3 py-1 bg-slate-700 text-white rounded">+</button>
-                  <a href={viewerUrl} download className="px-3 py-1 bg-slate-700 text-white rounded">Download</a>
-                </div>
-                <button onClick={() => setViewerUrl(null)} className="px-3 py-1 bg-red-600 text-white rounded">Close</button>
-              </div>
-              <div className="overflow-auto" style={{ maxHeight: '80vh' }}>
-                <img src={viewerUrl} alt="viewer" style={{ transform: `scale(${viewerZoom})`, transformOrigin: 'center top', display: 'block', margin: '0 auto' }} />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

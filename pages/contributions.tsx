@@ -30,7 +30,7 @@ export default function Contributions() {
   const pid = Array.isArray(projectId) ? projectId[0] : projectId
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [text, setText] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  const [imageUrl, setImageUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [contribs, setContribs] = useState<Contribution[]>([])
   const [selectedProject, setSelectedProject] = useState<any>(null)
@@ -38,8 +38,6 @@ export default function Contributions() {
   const [allProjects, setAllProjects] = useState<any[]>([])
   const [userRole, setUserRole] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'verified' | 'rejected'>('all')
-  const [viewerImage, setViewerImage] = useState<string | null>(null)
-  const [viewerZoom, setViewerZoom] = useState<number>(1)
 
   const projectScopedContribs = useMemo(() => {
     if (!selectedProject) return contribs
@@ -238,63 +236,17 @@ export default function Contributions() {
 
     setLoading(true)
     try {
-      let imageUrl: string | undefined = undefined
-      if (file) {
-        // Client-side guard: prevent too-large uploads for UX
-        const MAX_BYTES = 5 * 1024 * 1024
-        if (file.size > MAX_BYTES) {
-          alert('Image must be smaller than 5 MB')
+      // Validate image URL if provided
+      const finalImageUrl = imageUrl.trim() || null
+      if (finalImageUrl) {
+        // Basic URL validation
+        try {
+          new URL(finalImageUrl)
+        } catch {
+          alert('Please enter a valid image URL')
           setLoading(false)
           return
         }
-
-        // Resize & compress to reduce storage/bandwidth with improved quality settings
-        const toDataUrl = (file: File, maxWidth = 2048, quality = 0.92): Promise<{ dataUrl: string; name: string }> => {
-          return new Promise((resolve, reject) => {
-            const img = new Image()
-            const reader = new FileReader()
-            reader.onload = () => {
-              img.onload = () => {
-                const canvas = document.createElement('canvas')
-                // Only scale down if image is larger than maxWidth
-                const scale = img.width > maxWidth ? maxWidth / img.width : 1
-                canvas.width = Math.round(img.width * scale)
-                canvas.height = Math.round(img.height * scale)
-                const ctx = canvas.getContext('2d')!
-                
-                // Use better quality rendering
-                ctx.imageSmoothingEnabled = true
-                ctx.imageSmoothingQuality = 'high'
-                
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-                
-                // Use WebP if supported, otherwise fall back to high quality JPEG
-                const isWebPSupported = canvas.toDataURL('image/webp').indexOf('data:image/webp') === 0
-                const format = isWebPSupported ? 'image/webp' : 'image/jpeg'
-                const dataUrl = canvas.toDataURL(format, quality)
-                resolve({ dataUrl, name: file.name.replace(/\s+/g, '_') })
-              }
-              if (typeof reader.result === 'string') img.src = reader.result
-            }
-            reader.onerror = (e) => reject(e)
-            reader.readAsDataURL(file)
-          })
-        }
-
-        const { dataUrl, name } = await toDataUrl(file, 2048, 0.92)
-
-        // POST to local API route that saves to public/uploads
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: `${user.uid}_${Date.now()}_${name}`, dataUrl }),
-        })
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({ error: 'upload failed' }))
-          throw new Error(err.error || 'Upload failed')
-        }
-        const json = await res.json()
-        imageUrl = json.url
       }
 
       const db = getDbClient()
@@ -305,7 +257,7 @@ export default function Contributions() {
         userId: user.uid,
         projectId: projectIdForContrib,
         text: text.trim(),
-        imageUrl: imageUrl || null,
+        imageUrl: finalImageUrl,
         status: 'pending',
         pointsAwarded: 0,
         createdAt: serverTimestamp(),
@@ -319,7 +271,7 @@ export default function Contributions() {
         userId: user.uid,
         projectId: projectIdForContrib ?? undefined,
         text: text.trim(),
-        imageUrl: imageUrl || undefined,
+        imageUrl: finalImageUrl || undefined,
         status: 'pending',
         pointsAwarded: 0,
         createdAt: new Date(),
@@ -338,12 +290,12 @@ export default function Contributions() {
           contributionId: docRef.id,
           projectId: projectIdForContrib ?? 'general',
           projectName: selectedProject?.name ?? 'General',
-          hasImage: Boolean(imageUrl),
+          hasImage: Boolean(finalImageUrl),
         },
       })
 
       setText('')
-      setFile(null)
+      setImageUrl('')
     } catch (err) {
       console.error(err)
       alert('Failed to submit contribution')
@@ -445,32 +397,52 @@ export default function Contributions() {
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
+                <label className="block text-xs uppercase tracking-wider mb-2 opacity-70">
+                  Contribution Description *
+                </label>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   className="ascii-input min-h-[120px]"
                   placeholder="DESCRIBE YOUR CONTRIBUTION..."
+                  required
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="ascii-button cursor-pointer py-2 text-xs">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)} 
-                    className="hidden" 
-                  />
-                  <span>{file ? file.name.substring(0, 15) + (file.name.length > 15 ? '...' : '') : 'Add Image'}</span>
+              <div>
+                <label className="block text-xs uppercase tracking-wider mb-2 opacity-70">
+                  Link URL (optional)
                 </label>
-                
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="ascii-input"
+                  placeholder="https://drive.google.com/... or any resource link"
+                />
+                <p className="text-xs mt-1 opacity-50">
+                  Paste a link to your files (Google Drive folder, image, document, etc.)
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="submit"
                   disabled={loading || !text.trim()}
                   className="ascii-button py-2 text-xs"
                 >
-                  {loading ? 'Submitting...' : 'Submit'}
+                  {loading ? 'Submitting...' : 'Submit Contribution'}
                 </button>
+                
+                {imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl('')}
+                    className="text-xs uppercase tracking-wider opacity-70 hover:opacity-100"
+                  >
+                    Clear Link
+                  </button>
+                )}
               </div>
             </form>
             <span className="ascii-card-bottom" aria-hidden="true">+-----------------------+</span>
@@ -517,31 +489,18 @@ export default function Contributions() {
                     <p className="text-sm">{c.text}</p>
                     
                     {c.imageUrl && (
-                      <div 
-                        className="relative group border-2 border-white/70 hover:border-white inline-block cursor-pointer shadow-lg hover:shadow-xl transition-all duration-200" 
-                        onClick={() => setViewerImage(c.imageUrl || null)}
-                      >
-                        {/* Smaller sized preview */}
-                        <div className="max-h-48 min-h-[100px] min-w-[100px] bg-black/20 flex items-center justify-center">
-                          <img 
-                            src={c.imageUrl} 
-                            alt="contribution" 
-                            className="max-h-48 w-auto object-contain" 
-                            loading="lazy"
-                            style={{
-                              imageRendering: 'auto',
-                              backfaceVisibility: 'hidden'
-                            }}
-                          />
-                        </div>
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/60 transition-all duration-200">
-                          <div className="opacity-0 group-hover:opacity-100 transform group-hover:scale-100 scale-90 transition-all duration-200 bg-white/10 backdrop-blur-sm p-3 rounded flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                            </svg>
-                            <span className="font-bold tracking-wider">View Full Image</span>
-                          </div>
-                        </div>
+                      <div className="mt-2">
+                        <a
+                          href={c.imageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ascii-button inline-flex items-center gap-2 py-2 px-4 text-xs"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          <span>View Attached Link</span>
+                        </a>
                       </div>
                     )}
                     
@@ -575,122 +534,6 @@ export default function Contributions() {
           </footer>
         </div>
       </main>
-
-      {/* Image Viewer Modal */}
-      {viewerImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 p-2">
-          <div className="relative w-full max-w-6xl h-[90vh] flex flex-col">
-            {/* Header with controls */}
-            <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center p-4 bg-gradient-to-b from-black to-transparent">
-              <div className="flex items-center gap-4">
-                <div className="flex bg-black/80 border border-white p-1 rounded">
-                  <button 
-                    onClick={() => setViewerZoom(z => Math.max(0.5, z - 0.25))}
-                    className="px-4 py-2 text-lg font-bold hover:bg-white/10"
-                    aria-label="Zoom out"
-                  >
-                    −
-                  </button>
-                  <div className="px-3 py-2 border-x border-white/30">
-                    {Math.round(viewerZoom * 100)}%
-                  </div>
-                  <button 
-                    onClick={() => setViewerZoom(z => Math.min(5, z + 0.25))}
-                    className="px-4 py-2 text-lg font-bold hover:bg-white/10"
-                    aria-label="Zoom in"
-                  >
-                    +
-                  </button>
-                </div>
-                
-                <button 
-                  onClick={() => setViewerZoom(1)}
-                  className="bg-black/80 border border-white px-4 py-2 hover:bg-white/10"
-                >
-                  Reset View
-                </button>
-                
-                <a 
-                  href={viewerImage} 
-                  download 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="bg-black/80 border border-white px-4 py-2 hover:bg-white/10 flex items-center gap-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Download
-                </a>
-              </div>
-              
-              <button 
-                onClick={() => {
-                  setViewerImage(null);
-                  setViewerZoom(1);
-                }}
-                className="bg-red-900 border border-red-700 text-white px-4 py-2 hover:bg-red-800"
-                aria-label="Close image viewer"
-              >
-                Close Viewer
-              </button>
-            </div>
-            
-            {/* Main image container with scroll/zoom */}
-            <div 
-              className="overflow-auto flex-1 flex items-center justify-center mt-16"
-              style={{
-                backgroundColor: 'rgba(0,0,0,0.9)'
-              }}
-            >
-              <div 
-                style={{
-                  transform: `scale(${viewerZoom})`,
-                  transformOrigin: 'center center',
-                  transition: 'transform 0.2s ease-out'
-                }}
-                className="relative cursor-move"
-              >
-                <img 
-                  src={viewerImage} 
-                  alt="Contribution Image" 
-                  className="max-w-none max-h-none shadow-2xl"
-                  style={{
-                    boxShadow: '0 0 20px rgba(255,255,255,0.1)',
-                    imageRendering: 'auto',
-                    objectFit: 'contain',
-                    backfaceVisibility: 'hidden'
-                  }}
-                  onLoad={(e) => {
-                    // Auto-fit large images
-                    const img = e.target as HTMLImageElement;
-                    const container = document.querySelector('.overflow-auto');
-                    
-                    if (container) {
-                      const containerWidth = container.clientWidth;
-                      const containerHeight = container.clientHeight;
-                      
-                      if (img.naturalWidth > containerWidth || img.naturalHeight > containerHeight) {
-                        // Automatically adjust zoom to fit image within viewport
-                        const widthRatio = containerWidth / img.naturalWidth;
-                        const heightRatio = containerHeight / img.naturalHeight;
-                        const fitZoom = Math.min(1, Math.min(widthRatio, heightRatio) * 0.9);
-                        
-                        if (fitZoom < 1) setViewerZoom(fitZoom);
-                      }
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            
-            {/* Image navigation dots (for future multi-image support) */}
-            <div className="bg-black py-3 flex justify-center">
-              <div className="bg-white/10 h-1 w-20 rounded-full"></div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
