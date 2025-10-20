@@ -3,18 +3,29 @@
 // assuming the authentication is handled through the Firebase console
 require('dotenv').config({ path: '.env.local' });
 const admin = require('firebase-admin');
-const fs = require('fs');
-const path = require('path');
 
-// Read service account file
-const serviceAccountPath = path.resolve(__dirname, '../service-account.json');
-console.log('Looking for service account at:', serviceAccountPath);
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error('❌ service-account.json not found at:', serviceAccountPath);
+// Try primary service account first, fallback to alternative
+const useAltAccount = !process.env.FIREBASE_CLIENT_EMAIL && 
+                      process.env.FIREBASE_CLIENT_EMAIL_ALT && 
+                      process.env.FIREBASE_PRIVATE_KEY_ALT;
+
+const clientEmail = useAltAccount 
+  ? process.env.FIREBASE_CLIENT_EMAIL_ALT 
+  : process.env.FIREBASE_CLIENT_EMAIL;
+
+const privateKey = useAltAccount 
+  ? process.env.FIREBASE_PRIVATE_KEY_ALT 
+  : process.env.FIREBASE_PRIVATE_KEY;
+
+if (!clientEmail || !privateKey || !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+  console.error('❌ Missing required environment variables');
+  console.error('Required: NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+  console.error('Required (at least one set): FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY');
+  console.error('Or: FIREBASE_CLIENT_EMAIL_ALT + FIREBASE_PRIVATE_KEY_ALT');
   process.exit(1);
 }
 
-const serviceAccount = require(serviceAccountPath);
+console.log(`Using ${useAltAccount ? 'alternative' : 'primary'} service account for admin setup`);
 
 // Admin credentials - these should match the users you create in Firebase console
 const adminEmail = 'admin@vitstudent.ac.in';
@@ -22,9 +33,13 @@ const superAdminEmail = 'superadmin@vitstudent.ac.in';
 
 // Initialize Firebase Admin SDK
 try {
-  console.log('Initializing Firebase Admin SDK...');
+  console.log('Initializing Firebase Admin SDK with environment variables...');
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: clientEmail,
+      privateKey: privateKey.replace(/\\n/g, '\n')
+    })
   });
   
   console.log('✅ Firebase Admin SDK initialized successfully');
