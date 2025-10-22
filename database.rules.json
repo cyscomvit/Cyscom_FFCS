@@ -1,0 +1,24 @@
+{
+  "rules": {
+    ".read": "auth != null && auth.token.email.matches('.*@vitstudent\\.ac\\.in')",
+    ".write": "false",
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.token.email.matches('.*@vitstudent\\.ac\\.in')",
+        ".write": "auth != null && (auth.uid == $uid || root.child('users').child(auth.uid).child('role').val() in ['admin','superadmin'])"
+      }
+    },
+    "projects": {
+      "$pid": {
+        ".read": "auth != null && auth.token.email.matches('.*@vitstudent\\.ac\\.in')",
+        ".write": "root.child('users').child(auth.uid).child('role').val() in ['admin','superadmin']"
+      }
+    },
+    "joinRequests": {
+      "$rid": {
+        ".read": "auth != null && auth.token.email.matches('.*@vitstudent\\.ac\\.in')",
+        ".write": "auth != null && (auth.uid == newData.child('userId').val() || root.child('users').child(auth.uid).child('role').val() in ['admin','superadmin'])"
+      }
+    }
+  }
+}

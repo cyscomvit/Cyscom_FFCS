@@ -2,6 +2,7 @@ import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
+import { getDatabase } from 'firebase/database'
 import type { FirebaseApp } from 'firebase/app'
 
 const firebaseConfig = {
@@ -48,6 +49,18 @@ export function getDbClient() {
     return getFirestore(getAppClient())
   } catch (e) {
     throw new Error('Failed to get Firestore client: ' + (e instanceof Error ? e.message : String(e)))
+  }
+}
+
+// Realtime Database client (browser)
+export function getRealtimeDbClient() {
+  if (typeof window === 'undefined') {
+    throw new Error('Realtime Database client can only be used in the browser')
+  }
+  try {
+    return getDatabase(getAppClient())
+  } catch (e) {
+    throw new Error('Failed to get Realtime Database client: ' + (e instanceof Error ? e.message : String(e)))
   }
 }
 

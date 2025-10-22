@@ -36,3 +36,13 @@ export function initializeApp() {
     });
   }
 }
+
+// Convenience helper to get the Admin Realtime Database instance.
+export function getAdminRealtimeDb() {
+  const app = initializeApp()
+  try {
+    return admin.database(app)
+  } catch (e) {
+    throw new Error('Failed to get Admin Realtime Database client: ' + (e instanceof Error ? e.message : String(e)))
+  }
+}

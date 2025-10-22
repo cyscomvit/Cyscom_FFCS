@@ -147,9 +147,11 @@ export default function ProjectPage(){
     if(hasPendingRequest) return alert('You already have a pending request');
     if((project.members||[]).includes(userId)) return alert('You are already a member');
 
-    // enforce members limit
-    const limit = project.membersLimit || 4
-    if ((project.members || []).length >= limit) return alert('Project is full')
+  // enforce members limit
+  // Coerce membersLimit to a number to avoid string values blocking joins
+  const limit = Number(project.membersLimit) || 4
+  console.debug('requestToJoin (project page):', { projectId: project.projectId, membersLength: (project.members || []).length, limit })
+  if ((project.members || []).length >= limit) return alert('Project is full')
 
     setRequesting(true);
     try {

@@ -145,6 +145,7 @@ export default function Admin() {
           name: data.name,
           description: data.description,
           members: data.members || [],
+          membersLimit: data.membersLimit || 4,
           department: data.department || null
         })
       })
@@ -370,7 +371,9 @@ export default function Admin() {
         if (!projectSnap.exists()) throw new Error('Project not found')
   const projectData = projectSnap.data() as any
   const members = projectData.members || []
-  const limit = projectData.membersLimit || 4
+  // Ensure membersLimit is numeric (may be stored as string)
+  const limit = Number(projectData.membersLimit) || 4
+  console.debug('approveJoinRequest:', { projectId, membersLength: members.length, limit })
   if (members.length >= limit) throw new Error('Project is full')
         if (members.includes(userId)) throw new Error('User is already a member')
 
@@ -544,22 +547,22 @@ export default function Admin() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setContribFilter('pending')}
-                    className={`px-2 py-1 rounded ${contribFilter === 'pending' ? 'bg-sky-600 text-white' : 'bg-slate-100'}`}>
+                    className={`px-2 py-1 rounded ${contribFilter === 'pending' ? 'bg-black text-white' : 'bg-white text-black'}`}>
                     Pending
                   </button>
                   <button
                     onClick={() => setContribFilter('all')}
-                    className={`px-2 py-1 rounded ${contribFilter === 'all' ? 'bg-sky-600 text-white' : 'bg-slate-100'}`}>
+                    className={`px-2 py-1 rounded ${contribFilter === 'all' ? 'bg-black text-white' : 'bg-white text-black'}`}>
                     All
                   </button>
                   <button
                     onClick={() => setContribFilter('verified')}
-                    className={`px-2 py-1 rounded ${contribFilter === 'verified' ? 'bg-sky-600 text-white' : 'bg-slate-100'}`}>
+                    className={`px-2 py-1 rounded ${contribFilter === 'verified' ? 'bg-black text-white' : 'bg-white text-black'}`}>
                     Verified
                   </button>
                   <button
                     onClick={() => setContribFilter('rejected')}
-                    className={`px-2 py-1 rounded ${contribFilter === 'rejected' ? 'bg-sky-600 text-white' : 'bg-slate-100'}`}>
+                    className={`px-2 py-1 rounded ${contribFilter === 'rejected' ? 'bg-black text-white' : 'bg-white text-black'}`}>
                     Rejected
                   </button>
                 </div>
@@ -611,12 +614,21 @@ export default function Admin() {
                       )}
                     </div>
                     <div className="w-40 text-right">
-                      <label className="text-sm text-slate-300 block">Points</label>
-                      <input id={`points-${c.contribId}`} type="number" defaultValue={5} className="w-full mt-1 p-2 rounded bg-black/20 text-white" />
-                      <div className="mt-3 flex gap-2 justify-end">
-                        <button onClick={async ()=>{ const val = (document.getElementById(`points-${c.contribId}`) as HTMLInputElement).value; await approve(c.contribId, Number(val)) }} disabled={loadingIds.includes(c.contribId)} className="px-3 py-1 rounded bg-green-600 text-white">{loadingIds.includes(c.contribId)?'Processing':'Approve'}</button>
-                        <button onClick={async ()=> await reject(c.contribId)} disabled={loadingIds.includes(c.contribId)} className="px-3 py-1 rounded bg-red-600 text-white">Reject</button>
-                      </div>
+                      {c.status === 'pending' ? (
+                        <>
+                          <label className="text-sm text-slate-300 block">Points</label>
+                          <input id={`points-${c.contribId}`} type="number" defaultValue={c.pointsAwarded || 5} className="w-full mt-1 p-2 rounded bg-black/20 text-white" />
+                          <div className="mt-3 flex gap-2 justify-end">
+                            <button onClick={async ()=>{ const val = (document.getElementById(`points-${c.contribId}`) as HTMLInputElement).value; await approve(c.contribId, Number(val)) }} disabled={loadingIds.includes(c.contribId)} className="px-3 py-1 rounded bg-green-600 text-white">{loadingIds.includes(c.contribId)?'Processing':'Approve'}</button>
+                            <button onClick={async ()=> await reject(c.contribId)} disabled={loadingIds.includes(c.contribId)} className="px-3 py-1 rounded bg-red-600 text-white">Reject</button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="mt-2 text-sm">
+                          <div className="text-xs text-slate-400">Status: <span className="font-medium text-white">{c.status}</span></div>
+                          <div className="mt-1">Points: <strong>{c.pointsAwarded ?? 0}</strong></div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -861,6 +873,50 @@ export default function Admin() {
                           <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
                             <span>Department: {departments.find(d => d.deptId === project.department)?.name || project.department}</span>
                             <span>Members: {project.members.length}/{(project as any).membersLimit || 4}</span>
+                          </div>
+                          <div className="mt-2">
+                            <label className="text-sm text-slate-300 mr-2">Edit capacity:</label>
+                            <input id={`membersLimit-${project.projectId}`} type="number" defaultValue={(project as any).membersLimit || 4} min={1} className="w-24 px-2 py-1 bg-black/10 rounded text-black" />
+                            <button onClick={async ()=>{
+                              const val = Number((document.getElementById(`membersLimit-${project.projectId}`) as HTMLInputElement).value) || 4
+                              try{
+                                const db = getDbClient()
+                                await runTransaction(db, async (tx)=>{
+                                  const pref = doc(db,'projects',project.projectId)
+                                  const psnap = await tx.get(pref)
+                                  if(!psnap.exists()) throw new Error('Project not found')
+                                  tx.update(pref,{ membersLimit: val })
+                                })
+                                alert('Project capacity updated')
+                              }catch(e){ console.error(e); alert('Failed to update capacity') }
+                            }} className="ml-2 px-3 py-1 bg-cyscom text-black rounded">Save</button>
+                          </div>
+                          <div className="mt-2">
+                            <label className="text-sm text-slate-300 mr-2">Members:</label>
+                            <div className="flex gap-2 mt-1 flex-wrap">
+                              {(project.members || []).map(m => (
+                                <div key={m} className="px-2 py-1 bg-slate-700 rounded text-xs flex items-center gap-2">
+                                  <span>{m}</span>
+                                  <button onClick={async ()=>{
+                                    if(!confirm('Remove this member?')) return
+                                    try{
+                                      const db = getDbClient()
+                                      await runTransaction(db, async (tx)=>{
+                                        const pref = doc(db,'projects',project.projectId)
+                                        const psnap = await tx.get(pref)
+                                        if(!psnap.exists()) throw new Error('Project not found')
+                                        const pm = psnap.data().members || []
+                                        tx.update(pref,{ members: pm.filter((x:string)=>x!==m) })
+                                        // clear user's projectId
+                                        const uref = doc(db,'users',m)
+                                        tx.update(uref,{ projectId: null })
+                                      })
+                                      alert('Member removed')
+                                    }catch(e){ console.error(e); alert('Failed to remove member') }
+                                  }} className="px-1 py-0.5 bg-red-600 rounded text-white text-[10px]">x</button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-2">

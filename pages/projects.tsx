@@ -118,8 +118,11 @@ export default function Projects(){
         return
       }
       
-      // Check if project is full
-      if (p.members.length >= 4) {
+      // Check if project is full (use project-specific membersLimit)
+      // Coerce membersLimit to a number in case it's stored as a string or missing
+      const limit = Number((p as any).membersLimit) || 4
+      console.debug('requestToJoin:', { projectId: p.projectId, membersLength: p.members.length, limit })
+      if (p.members.length >= limit) {
         alert('Project is full')
         return
       }
