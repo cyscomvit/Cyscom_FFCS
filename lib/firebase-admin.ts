@@ -27,7 +27,8 @@ export function initializeApp() {
       })
     });
   } catch (error) {
-    // If environment variables fail, try databaseURL method
+    // If environment variables fail, log the error and try databaseURL method
+    console.error('Firebase admin init (env creds) error:', error instanceof Error ? error.message : String(error));
     console.log('Failed to initialize with credentials, using databaseURL method for emulator');
     
     return admin.initializeApp({
